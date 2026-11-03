@@ -1,0 +1,906 @@
+<title>DSH Superagent 拆解圖鑑</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: 一份「調度室作業手冊」— 左側固定目錄、右側長捲軸章節；圖解用手繪 SVG，關鍵規則可互動模擬 */
+:root{
+  --bg:#eef1f4; --paper:#f8fafb; --ink:#14202e; --muted:#5a6878; --line:#cdd5de;
+  --accent:#1d55b8; --accent-soft:#dbe6f7;
+  --amber:#965500; --amber-soft:#f8e9cf;      /* 等人處理 */
+  --green:#24794a; --green-soft:#dcefe3;      /* 完成 / 允許 */
+  --red:#b3332d;   --red-soft:#f6dedc;        /* 拒絕 */
+  --grey-soft:#e3e7ec;
+  --code-bg:#e6ebf0;
+  --f-display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f151c; --paper:#161e27; --ink:#e3e9ef; --muted:#93a1b0; --line:#2b3744;
+  --accent:#7fa8ef; --accent-soft:#1c2c47;
+  --amber:#e8a948; --amber-soft:#3a2b14;
+  --green:#6cc493; --green-soft:#16301f;
+  --red:#ee8580; --red-soft:#3b1b1a;
+  --grey-soft:#222c37; --code-bg:#1d2732; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f151c; --paper:#161e27; --ink:#e3e9ef; --muted:#93a1b0; --line:#2b3744;
+  --accent:#7fa8ef; --accent-soft:#1c2c47;
+  --amber:#e8a948; --amber-soft:#3a2b14;
+  --green:#6cc493; --green-soft:#16301f;
+  --red:#ee8580; --red-soft:#3b1b1a;
+  --grey-soft:#222c37; --code-bg:#1d2732; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.75;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;grid-template-columns:200px minmax(0,1fr);gap:48px}
+@media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr);gap:0}.toc{display:none}}
+.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 24px);align-self:start;padding-block:40px;font-size:13px}
+.toc b{display:block;font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;color:var(--muted);margin-bottom:10px;text-transform:uppercase}
+.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.toc a{color:var(--muted);text-decoration:none;display:block;padding:3px 8px;border-left:2px solid transparent}
+.toc a:hover,.toc a:focus-visible{color:var(--ink);border-left-color:var(--accent);outline:none}
+main{min-width:0;padding-block:40px 96px}
+
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.3;margin:0}
+h1{font-size:clamp(34px,6vw,56px);font-weight:900;letter-spacing:.01em}
+h2{font-size:clamp(24px,3.4vw,32px);font-weight:900}
+h3{font-size:19px;font-weight:600}
+p{margin:0;max-width:68ch}
+a{color:var(--accent)}
+code,.mono{font-family:var(--f-mono);font-size:.86em}
+code{background:var(--code-bg);padding:1px 5px;border-radius:3px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
+.muted{color:var(--muted)}
+section{display:flex;flex-direction:column;gap:20px;padding-top:72px;scroll-margin-top:16px}
+.sec-head{display:flex;flex-direction:column;gap:8px;border-top:2px solid var(--ink);padding-top:14px}
+.sec-head .eyebrow{color:var(--muted)}
+
+/* hero */
+.hero{display:flex;flex-direction:column;gap:22px;padding-top:8px}
+.thesis{font-family:var(--f-display);font-size:clamp(20px,2.6vw,26px);font-weight:600;color:var(--accent);max-width:30ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;border:1px solid var(--line);background:var(--paper)}
+.facts div{padding:14px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.facts strong{font-family:var(--f-mono);font-size:22px;font-variant-numeric:tabular-nums}
+.facts span{font-size:13px;color:var(--muted);line-height:1.4}
+.sources-note{font-size:13px;color:var(--muted)}
+
+/* generic blocks */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.panel{background:var(--paper);border:1px solid var(--line);padding:18px 20px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.panel h3{font-size:17px}
+.tag{display:inline-block;font-family:var(--f-mono);font-size:11px;padding:1px 7px;border-radius:2px;letter-spacing:.04em;white-space:nowrap}
+.t-blue{background:var(--accent-soft);color:var(--accent)}
+.t-amber{background:var(--amber-soft);color:var(--amber)}
+.t-green{background:var(--green-soft);color:var(--green)}
+.t-red{background:var(--red-soft);color:var(--red)}
+.t-grey{background:var(--grey-soft);color:var(--muted)}
+.callout{border-left:3px solid var(--amber);background:var(--amber-soft);padding:12px 16px;font-size:15px}
+.callout.blue{border-color:var(--accent);background:var(--accent-soft)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--paper)}
+th,td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+th{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--bg)}
+td code{white-space:nowrap}
+ul.tight{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px;max-width:68ch}
+
+/* bar chart */
+.bars{display:flex;flex-direction:column;gap:10px;background:var(--paper);border:1px solid var(--line);padding:18px 20px}
+.bar-row{display:grid;grid-template-columns:150px minmax(0,1fr) 64px;gap:12px;align-items:center;font-size:13px}
+.bar-track{height:18px;background:var(--grey-soft);position:relative}
+.bar-fill{height:100%;background:var(--accent)}
+.bar-fill.alt{background:var(--amber)}
+.bar-fill.mute{background:var(--muted)}
+.bar-row .v{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+@media (max-width:520px){.bar-row{grid-template-columns:96px minmax(0,1fr) 54px;font-size:12px}}
+
+/* svg diagrams */
+.diagram{background:var(--paper);border:1px solid var(--line);padding:12px}
+.diagram svg{display:block;width:100%;min-width:760px;height:auto}
+svg .box{fill:var(--paper);stroke:var(--ink);stroke-width:1.4}
+svg .box.blue{fill:var(--accent-soft);stroke:var(--accent)}
+svg .box.amber{fill:var(--amber-soft);stroke:var(--amber)}
+svg .box.green{fill:var(--green-soft);stroke:var(--green)}
+svg .box.grey{fill:var(--grey-soft);stroke:var(--muted)}
+svg .box.dash{stroke-dasharray:5 4}
+svg .t{fill:var(--ink);font-family:var(--f-body);font-size:14px;font-weight:700}
+svg .s{fill:var(--muted);font-family:var(--f-body);font-size:11.5px}
+svg .m{fill:var(--muted);font-family:var(--f-mono);font-size:10.5px}
+svg .lbl{fill:var(--accent);font-family:var(--f-body);font-size:11.5px;font-weight:500}
+svg .lbl.amber{fill:var(--amber)}
+svg .lbl.green{fill:var(--green)}
+svg .ar{stroke:var(--ink);stroke-width:1.4;fill:none}
+svg .ar.blue{stroke:var(--accent)}
+svg .ar.amber{stroke:var(--amber);stroke-dasharray:6 4}
+svg .ar.green{stroke:var(--green)}
+svg .zone{fill:none;stroke:var(--line);stroke-width:1.2;stroke-dasharray:3 4}
+
+/* journey stepper */
+.journey{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:0;border:1px solid var(--line);background:var(--paper)}
+@media (max-width:720px){.journey{grid-template-columns:minmax(0,1fr)}}
+.steps{list-style:none;margin:0;padding:8px 0;border-right:1px solid var(--line);display:flex;flex-direction:column}
+@media (max-width:720px){.steps{border-right:0;border-bottom:1px solid var(--line);flex-direction:row;overflow-x:auto}}
+.steps button{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:8px;padding:8px 14px;font-size:14px;line-height:1.4;color:var(--muted);width:100%;box-sizing:border-box}
+@media (max-width:720px){.steps button{grid-template-columns:24px auto;white-space:nowrap;width:auto}}
+.steps button .n{font-family:var(--f-mono);font-size:12px;padding-top:1px}
+.steps button[aria-selected="true"]{color:var(--ink);background:var(--accent-soft);font-weight:700}
+.steps button[aria-selected="true"] .n{color:var(--accent)}
+.steps button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.steps li.branch button{border-top:1px dashed var(--line)}
+.stage{padding:22px 24px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.stage .where{display:flex;flex-wrap:wrap;gap:6px}
+.stage pre{margin:0;background:var(--code-bg);padding:12px 14px;font-family:var(--f-mono);font-size:12.5px;line-height:1.55;overflow-x:auto;white-space:pre}
+.stage-nav{display:flex;gap:8px;margin-top:4px}
+.btn{font:inherit;font-size:13px;padding:6px 14px;border:1px solid var(--ink);background:var(--paper);color:var(--ink);cursor:pointer}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn:disabled{opacity:.35;cursor:default;background:var(--paper);color:var(--ink)}
+
+/* simulators */
+.sim{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border:1px solid var(--line);background:var(--paper)}
+@media (max-width:760px){.sim{grid-template-columns:minmax(0,1fr)}}
+.sim form{padding:18px 20px;display:flex;flex-direction:column;gap:14px;border-right:1px solid var(--line)}
+@media (max-width:760px){.sim form{border-right:0;border-bottom:1px solid var(--line)}}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>span{font-size:12px;color:var(--muted);font-family:var(--f-mono);letter-spacing:.04em}
+.seg{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);width:fit-content;max-width:100%}
+.seg label{position:relative;font-size:13px;padding:5px 11px;cursor:pointer;border-right:1px solid var(--line)}
+.seg label:last-child{border-right:0}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--ink);color:var(--paper)}
+.seg label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:1px}
+.seg label:has(input:disabled){opacity:.35;cursor:default}
+select{font:inherit;font-size:13px;padding:4px 8px;background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.out{padding:20px 22px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.verdict{font-family:var(--f-display);font-size:26px;font-weight:900;line-height:1.2}
+.verdict.explicit{color:var(--green)} .verdict.inferred{color:var(--amber)} .verdict.no{color:var(--red)}
+.trace{list-style:none;margin:0;padding:0;font-size:13.5px;display:flex;flex-direction:column;gap:6px}
+.trace li{display:grid;grid-template-columns:18px 1fr;gap:6px;line-height:1.5}
+.trace li::before{content:"·";color:var(--muted);font-weight:700}
+.trace li.hit::before{content:"▶";color:var(--accent);font-size:10px;padding-top:3px}
+.stage-table tr.hit td{background:var(--accent-soft)}
+.stage-table tr.hit td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+
+/* concept cards */
+.concepts{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.concept{background:var(--paper);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.concept header{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.concept b{font-family:var(--f-mono);font-size:14px}
+.concept .zh{font-size:13px;color:var(--muted)}
+.concept p{font-size:14px;line-height:1.6}
+.concept.core{background:linear-gradient(var(--accent-soft),var(--accent-soft)) top/100% 3px no-repeat,var(--paper)}
+
+/* timeline / ladder */
+.ladder{display:flex;flex-direction:column;gap:0;border:1px solid var(--line);background:var(--paper)}
+.ladder div{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ladder div:last-child{border-bottom:0}
+.ladder .k{font-family:var(--f-mono);font-size:12px;color:var(--accent);padding-top:3px}
+
+/* code block for prompt */
+.copybox{position:relative;border:1px solid var(--line);background:var(--code-bg)}
+.copybox pre{margin:0;padding:16px 18px;font-family:var(--f-mono);font-size:12.5px;line-height:1.6;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.copybox .btn{position:absolute;top:8px;right:8px;font-size:12px;padding:3px 10px}
+
+footer{margin-top:80px;padding-top:16px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+@media (prefers-reduced-motion:no-preference){.stage{animation:none}html{scroll-behavior:smooth}}
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="目錄">
+  <b>目錄</b>
+  <ol>
+    <li><a href="#why">1 為什麼需要它</a></li>
+    <li><a href="#philosophy">2 注意力哲學</a></li>
+    <li><a href="#overview">3 全局架構</a></li>
+    <li><a href="#journey">4 一則訊息的旅程</a></li>
+    <li><a href="#gate">5 兩道篩網</a></li>
+    <li><a href="#domain">6 領域模型</a></li>
+    <li><a href="#stages">7 Ticket 生命週期</a></li>
+    <li><a href="#code">8 程式碼地圖</a></li>
+    <li><a href="#reliability">9 可靠性設計</a></li>
+    <li><a href="#gap">10 文章 vs 原型</a></li>
+    <li><a href="#handoff">11 LLM 接手指南</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="hero">
+  <span class="eyebrow">Brownfield 拆解 · deepseek-ai/dsh-superagent-prototype</span>
+  <h1>DSH Superagent 拆解圖鑑</h1>
+  <p class="thesis">用更多 token，換回人的注意力。</p>
+  <p>DeepSeek Harness（DSH）團隊在 2026/10/31 發表〈Super-agent 設計探索：邁向更自主的 Agent 系統〉，並開源這份研究原型。它是一個「只服務一個 GitHub repo 的主動型 coding agent」：在 GitHub（和選用的飛書）上聽訊息，有人有權限地請它做事時，開一張 Ticket、在獨立的 Session 與目錄裡完成，再回到原本的對話裡交付，例如一個 PR。這份圖鑑把它拆成 11 個章節，最後一章是給下一個接手的 LLM 的工作手冊。</p>
+  <div class="facts" role="list">
+    <div role="listitem"><strong>15.6k</strong><span>行 TypeScript（src）</span></div>
+    <div role="listitem"><strong>1,197</strong><span>個測試全過（59 個 spec、15.0k 行），本次實測</span></div>
+    <div role="listitem"><strong>9</strong><span>份編號文件 000–008，需依序閱讀</span></div>
+    <div role="listitem"><strong>14 + 6</strong><span>Main Session 工具 + Executor 工具</span></div>
+    <div role="listitem"><strong>1</strong><span>個 commit（一次性公開匯入）</span></div>
+  </div>
+  <p class="sources-note">資料來源：本 repo 的 README、docs/000–008、src 與 tests；鉅亨號〈剛剛，DeepSeek又來掀桌子…〉(post/275433)、〈詳解Super Agent：會主動幹活，更懂何時閉嘴〉(post/275522)。行數為 <code>wc -l</code> 實測。</p>
+</header>
+
+<!-- 1 -->
+<section id="why">
+  <div class="sec-head"><span class="eyebrow">01 · 問題</span><h2>為什麼需要 Super-agent</h2></div>
+  <p>一般 Agent 以「一個 Session」為單位，Session 之間不共享結論，只有使用者自己掌握全貌。DSH 觀察到一個人通常只能同時盯 3 到 5 個活躍 Session。<strong>單一任務的上限取決於模型，多任務的上限取決於人的注意力。</strong>Super-agent 讓系統接手 Session 管理和上下文同步，人只負責決策和驗收。</p>
+  <div class="grid4">
+    <div class="panel"><span class="tag t-blue">連續</span><p>在 IM、GitHub 等既有介面互動，感覺只有一個 Agent。IM 裡說方案 A，PR 留言改成方案 B，它接得上。</p></div>
+    <div class="panel"><span class="tag t-blue">高效</span><p>回應快，多個複雜任務並行，不必等上一個做完。</p></div>
+    <div class="panel"><span class="tag t-blue">主動</span><p>持續觀察環境事件，值得處理的就推進；不需要介入時保持安靜。</p></div>
+    <div class="panel"><span class="tag t-blue">持久</span><p>始終在線、接上真實工作環境，長時間運行遇到異常能自動恢復。</p></div>
+  </div>
+  <h3>文章公布的實驗數據</h3>
+  <div class="bars" role="img" aria-label="p95 完成時間：單 Session 29.5 分鐘，Super-agent 雙層架構 15.7 分鐘">
+    <div class="bar-row"><span>單 Session 模式</span><div class="bar-track"><div class="bar-fill mute" style="width:100%"></div></div><span class="v">29.5 分</span></div>
+    <div class="bar-row"><span>Router–Worker 雙層</span><div class="bar-track"><div class="bar-fill" style="width:53.2%"></div></div><span class="v">15.7 分</span></div>
+    <p class="muted" style="font-size:13px">p95 完成時間。合成負載：300 則訊息、20 個工作請求。評論文章指出這是合成負載，與真實生產環境仍有差距，目前只在 DeepSeek 內部小團隊驗證。</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="philosophy">
+  <div class="sec-head"><span class="eyebrow">02 · 原則 · docs/000-philosophy.md</span><h2>注意力是唯一的預算</h2></div>
+  <p>整個專案只有一條核心原則：<strong>「Take as little human attention as possible, and give as much value as possible.」</strong>每則訊息、通知、問題、設定、面板元素、甚至每段文件都是在花別人的注意力；給不出更多價值的就刪掉。</p>
+  <div class="grid2">
+    <div class="panel">
+      <h3>Agent 什麼時候<span style="color:var(--green)">開口</span></h3>
+      <ul class="tight">
+        <li>確認一次請求，說清楚要做什麼（acknowledgement，≤100 字）</li>
+        <li>有結果可以驗收或使用（result）</li>
+        <li>需要人做一個決定（一次只問一個具體問題，走結構化的 <code>human_action</code>）</li>
+        <li>做不完（blocked / failed，誠實回報）</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>Agent 什麼時候<span style="color:var(--red)">閉嘴</span></h3>
+      <ul class="tight">
+        <li>工作中途的進度（progress 只留在 Ticket 內部）</li>
+        <li>沒有人請、也沒有書面規則允許的事</li>
+        <li>意圖不明的閒聊：安靜忽略，不追問確認</li>
+        <li>修好的 review comment 直接 resolve，不寫「已修正」</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout blue">設計面的推論：<strong>概念少、設定少</strong>。業務需求要嘛是既有概念的屬性，要嘛是一段 prompt；團隊用文字描述的行為是 prompt 文字，不是設定項。面板只顯示「需要人」的東西，健康狀態不佔空間。</div>
+</section>
+
+<!-- 3 -->
+<section id="overview">
+  <div class="sec-head"><span class="eyebrow">03 · 鳥瞰</span><h2>全局架構：Router 不做事，Worker 不路由</h2></div>
+  <p>文章裡的 Router–Worker，在程式碼裡叫 <strong>Main Session</strong>（<code>orchestrator</code>）與 <strong>Executor Session</strong>（<code>worker</code>）。兩者都是 DSH 的 Session，差別在 prompt、工具組和 preset。中間夾著一個<strong>純同步、無 I/O 的 Engine</strong>，它是 Trigger、Thread、Decision、Ticket、Assignment 唯一的寫入者。</p>
+  <div class="diagram scroll">
+    <svg viewBox="0 0 980 560" role="img" aria-label="全局架構圖">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink)"/></marker>
+        <marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+        <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--amber)"/></marker>
+        <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--green)"/></marker>
+      </defs>
+      <!-- zones -->
+      <rect class="zone" x="8" y="40" width="168" height="300"/>
+      <text class="m" x="16" y="32">SOURCES · src/sources</text>
+      <rect class="zone" x="196" y="40" width="560" height="300"/>
+      <text class="m" x="204" y="32">ENGINE · src/core（同步、單一交易、無 I/O）</text>
+      <rect class="zone" x="776" y="40" width="196" height="300"/>
+      <text class="m" x="784" y="32">EXECUTOR · src/executor</text>
+
+      <!-- sources -->
+      <rect class="box" x="22" y="64" width="140" height="56" rx="3"/>
+      <text class="t" x="34" y="88">GitHub</text><text class="s" x="34" y="107">通知、PR、CI、留言</text>
+      <rect class="box" x="22" y="140" width="140" height="56" rx="3"/>
+      <text class="t" x="34" y="164">飛書 Feishu</text><text class="s" x="34" y="183">選用，預設 disabled</text>
+      <rect class="box dash" x="22" y="216" width="140" height="56" rx="3"/>
+      <text class="t" x="34" y="240">你的 Source</text><text class="s" x="34" y="259">docs/008 cookbook</text>
+
+      <!-- intake -->
+      <rect class="box" x="212" y="118" width="148" height="84" rx="3"/>
+      <text class="t" x="224" y="142">Intake</text>
+      <text class="s" x="224" y="161">Trigger 只存一次</text>
+      <text class="s" x="224" y="177">掛到 Thread</text>
+      <text class="m" x="224" y="194">intake.ts</text>
+      <path class="ar" d="M162 92 C190 92 190 140 210 145" marker-end="url(#ah)"/>
+      <path class="ar" d="M162 168 L210 162" marker-end="url(#ah)"/>
+      <path class="ar" d="M162 244 C190 244 190 190 210 186" marker-end="url(#ah)"/>
+      <text class="lbl" x="226" y="110" style="font-size:10.5px">Trigger</text>
+
+      <!-- gate -->
+      <rect class="box blue" x="396" y="64" width="160" height="70" rx="3"/>
+      <text class="t" x="408" y="88">① Gate 程序層</text>
+      <text class="s" x="408" y="106">確定性：名單、@、admission</text>
+      <text class="m" x="408" y="124">policy.ts · gate()</text>
+      <!-- eval -->
+      <rect class="box blue" x="396" y="168" width="160" height="84" rx="3"/>
+      <text class="t" x="408" y="192">② Eval 語義層</text>
+      <text class="s" x="408" y="210">Main Session = Router</text>
+      <text class="s" x="408" y="226">LLM 判斷 · 只路由不實作</text>
+      <text class="m" x="408" y="244">evals.ts · assessment.ts</text>
+      <path class="ar blue" d="M360 140 L394 108" marker-end="url(#ahb)"/>
+      <path class="ar blue" d="M476 134 L476 166" marker-end="url(#ahb)"/>
+      <text class="lbl" x="482" y="155">explicit / inferred</text>
+      <path class="ar" d="M396 120 C 300 300 260 300 230 300" style="stroke:var(--red);stroke-dasharray:3 3"/>
+      <text class="s" x="232" y="318" style="fill:var(--red)">不准入 → 只記錄 disposition</text>
+
+      <!-- ticket -->
+      <rect class="box green" x="590" y="150" width="150" height="120" rx="3"/>
+      <text class="t" x="602" y="174">Ticket</text>
+      <text class="s" x="602" y="193">+ Mandate（授權範圍、</text>
+      <text class="s" x="602" y="209">  Policy 版本、強度）</text>
+      <text class="s" x="602" y="225">+ Subscriptions</text>
+      <text class="s" x="602" y="241">+ Assignment</text>
+      <text class="m" x="602" y="260">tickets.ts</text>
+      <path class="ar green" d="M556 210 L588 210" marker-end="url(#ahg)"/>
+      <text class="lbl green" x="573" y="200" text-anchor="middle" style="font-size:10.5px">accept</text>
+
+      <!-- executors -->
+      <rect class="box" x="792" y="78" width="164" height="54" rx="3"/>
+      <text class="t" x="804" y="100">worker-t1</text><text class="m" x="804" y="120">work/fix-login-label</text>
+      <rect class="box" x="792" y="150" width="164" height="54" rx="3"/>
+      <text class="t" x="804" y="172">worker-t2</text><text class="m" x="804" y="192">work/ci-flake</text>
+      <rect class="box grey" x="792" y="222" width="164" height="54" rx="3"/>
+      <text class="t" x="804" y="244">worker-t3</text><text class="m" x="804" y="264">排隊中（slot 滿）</text>
+      <text class="s" x="792" y="300">每張 Ticket 一個 Session</text>
+      <text class="s" x="792" y="316">+ 一個目錄（git worktree）</text>
+      <path class="ar green" d="M740 200 L790 177" marker-end="url(#ahg)"/>
+      <text class="lbl green" x="748" y="218" style="font-size:10.5px">派工</text>
+
+      <!-- fan-out -->
+      <path class="ar amber" d="M286 118 C 300 30, 700 20, 860 76" marker-end="url(#aha)"/>
+      <text class="lbl amber" x="300" y="14">Subscription fan-out：後續留言直接送到負責的 Worker（跳過 Router）</text>
+
+      <!-- outbox -->
+      <path class="ar" d="M874 276 L874 380 L92 380 L92 274" marker-end="url(#ah)"/>
+      <rect class="box" x="420" y="362" width="190" height="36" rx="3"/>
+      <text class="t" x="432" y="385" style="font-size:13px">Outbox → Channel 回覆</text>
+      <text class="s" x="618" y="374">ack / answer / result / attention</text>
+      <text class="s" x="618" y="390">同 Ticket 同對話依序送出</text>
+
+      <!-- store band -->
+      <rect class="box grey" x="8" y="430" width="964" height="56" rx="3"/>
+      <text class="t" x="22" y="454">Store（SQLite 單檔）＋ Effects 持久化副作用佇列</text>
+      <text class="s" x="22" y="474">先寫入再執行：assessment · launch · delivery · relay · notice · reply，失敗指數退避重試；重啟不重播事件</text>
+      <!-- panel -->
+      <rect class="box dash" x="8" y="500" width="300" height="48" rx="3"/>
+      <text class="t" x="22" y="522" style="font-size:13px">Web Panel（src/client）</text>
+      <text class="s" x="22" y="539">只列出「需要人」的事：等回答、等 review、受阻</text>
+      <rect class="box dash" x="324" y="500" width="300" height="48" rx="3"/>
+      <text class="t" x="338" y="522" style="font-size:13px">Runtime（src/app/runtime.ts）</text>
+      <text class="s" x="338" y="539">組裝根：建構各元件、啟動與關閉，不含規則</text>
+      <rect class="box dash" x="640" y="500" width="332" height="48" rx="3"/>
+      <text class="t" x="654" y="522" style="font-size:13px">Passes：每 2 秒一輪</text>
+      <text class="s" x="654" y="539">先跑到期的 effects，再 Engine.evaluateDue()</text>
+    </svg>
+  </div>
+  <div class="callout">和傳統「主 Agent 帶子 Agent」最大的差別：Router 不規劃、不高頻協調子任務。Worker 彼此上下文隔離，靠<strong>訂閱同一個 Thread</strong>感知彼此；Router 頂多送一則 ≤100 字的 note。</div>
+</section>
+
+<!-- 4 -->
+<section id="journey">
+  <div class="sec-head"><span class="eyebrow">04 · 範例走查</span><h2>一則訊息的旅程</h2></div>
+  <p>情境：Alice 在 GitHub Issue #42 留言「@dsh-bot 登入頁按鈕文字改成 Save」。Alice 在 allowed list 上。點左邊每一步，看資料長什麼樣、由哪個檔案負責。最後兩步是分支：Bob 在 PR 上補一句，訊息不經 Router 直接送到 Worker。</p>
+  <div class="journey">
+    <ol class="steps" role="tablist" aria-label="訊息旅程步驟" id="steps"></ol>
+    <div class="stage" role="tabpanel" id="stage" aria-live="polite"></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="gate">
+  <div class="sec-head"><span class="eyebrow">05 · 授權 · docs/002 · src/policy.ts</span><h2>兩道篩網：先算規則，再問模型</h2></div>
+  <p>第一道是 <strong>Gate</strong>：純程式碼、確定性，在呼叫模型前濾掉大部分訊息（文章說約 80%）。它回答「誰可以發起工作、強度多強」。第二道是 <strong>Assessment</strong>：Main Session 用 prompt 裡團隊寫的 rules 判斷候選訊息值不值得做。下面的模擬器直接移植 <code>settingsPolicy().gate()</code> 的判斷順序，可以自己切換看看。</p>
+  <div class="sim">
+    <form id="gateForm" onsubmit="return false">
+      <div class="field"><span>發送者</span><div class="seg" data-name="who">
+        <label><input type="radio" name="who" value="human" checked>人</label>
+        <label><input type="radio" name="who" value="bot">名單上的 bot</label>
+        <label><input type="radio" name="who" value="otherbot">其他 bot</label>
+        <label><input type="radio" name="who" value="ci">CI（無發送者）</label></div></div>
+      <div class="field"><span>在 allowed list 上？</span><div class="seg">
+        <label><input type="radio" name="allowed" value="1" checked>是</label>
+        <label><input type="radio" name="allowed" value="0">否</label></div></div>
+      <div class="field"><span>有沒有對 agent 說話（addressed）</span><div class="seg">
+        <label><input type="radio" name="addr" value="mention" checked>@mention</label>
+        <label><input type="radio" name="addr" value="direct">私訊 direct</label>
+        <label><input type="radio" name="addr" value="none">沒有</label></div></div>
+      <div class="field"><span>此 Thread 已有 Ticket？</span><div class="seg">
+        <label><input type="radio" name="part" value="0" checked>沒有</label>
+        <label><input type="radio" name="part" value="1">有（follow-up）</label></div></div>
+      <div class="field"><span>Source 在此範圍接收全部訊息？</span><div class="seg">
+        <label><input type="radio" name="obs" value="0" checked>只收 @</label>
+        <label><input type="radio" name="obs" value="1">全部訊息</label></div></div>
+      <div class="field"><span>accept mode</span><div class="seg">
+        <label><input type="radio" name="mode" value="off">off</label>
+        <label><input type="radio" name="mode" value="observe" checked>observe（預設）</label>
+        <label><input type="radio" name="mode" value="auto">auto</label></div></div>
+      <div class="field"><span>admission table（此範圍的三格，預設值已選好）</span>
+        <div style="display:grid;grid-template-columns:auto auto;gap:6px 10px;align-items:center;font-size:13px;width:fit-content">
+          <label for="c1">名單上、沒 @</label><select id="c1"><option value="inferred" selected>inferred</option><option value="ignore">ignore</option></select>
+          <label for="c2">不在名單、有 @</label><select id="c2"><option value="explicit">explicit</option><option value="inferred">inferred</option><option value="ignore" selected>ignore</option></select>
+          <label for="c3">不在名單、沒 @</label><select id="c3"><option value="inferred">inferred</option><option value="ignore" selected>ignore</option></select>
+        </div></div>
+    </form>
+    <div class="out">
+      <span class="eyebrow">Gate 結果</span>
+      <div class="verdict" id="gVerdict"></div>
+      <p id="gNext" style="font-size:15px"></p>
+      <ol class="trace" id="gTrace"></ol>
+      <p class="muted" style="font-size:12.5px">簡化：未模擬 bot list 比對與「Source 沒在聽這個 scope」的情況。原始碼見 <code>src/policy.ts</code> 的 <code>machineGate</code> 與 <code>gate</code>。</p>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="panel"><h3>三種 accept mode</h3>
+      <ul class="tight">
+        <li><span class="tag t-grey">off</span> 所有 inferred 都不成為候選</li>
+        <li><span class="tag t-amber">observe</span> 預設。inferred 會被評估，正面結果只記成 ignore「would accept」，不接單</li>
+        <li><span class="tag t-green">auto</span> 正面評估且至少命中一條啟用中的 rule，就接單</li>
+      </ul>
+      <p class="muted" style="font-size:14px">explicit 請求在任何 mode 都有效。官方建議：先 observe，看過記錄的 Decision 覺得對了，再切 auto。這就是文章說的「新員工逐步放權」。</p>
+    </div>
+    <div class="panel"><h3>Assessment 必須交出的三個事實</h3>
+      <ul class="tight">
+        <li>討論對象是這個專案</li>
+        <li>參與者表達了要實作某個具體變更的意圖</li>
+        <li>方向已經定案，夠做一個小的局部修改</li>
+      </ul>
+      <p class="muted" style="font-size:14px">每條啟用中的 rule 都要明確判一次 matched true/false，並附上原文引用（<code>intent_evidence</code>）。只有語氣、關鍵字不算數；「也許我們也該像他們那樣顯示未讀數」是偏好，不是請求。見 <code>prompts/admission.md</code>。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="domain">
+  <div class="sec-head"><span class="eyebrow">06 · 領域模型 · docs/001-domain.md</span><h2>12 個概念，一個都不能多</h2></div>
+  <p>程式碼、工具、面板、文件全部只用這組詞彙。上方有色條的是核心領域（Source、Thread、Eval、Mandate、Subscription），其餘是支撐概念。「人」<strong>不是</strong>領域概念：只是 Trigger 上的 actor 欄位。</p>
+  <div class="concepts" id="concepts"></div>
+  <h3>被刻意拒絕的設計（接手時不要加回來）</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>被拒絕</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td>Principal / 跨 Source 身分對應</td><td>人只是 Trigger metadata；同一人在飛書和 GitHub 的對應寫在 prompt（例如 <code>identities</code> skill）</td></tr>
+      <tr><td>Eval 自己排程延遲 Trigger</td><td>需要「等」的條件做成一個 Source，Eval 永遠不等待</td></tr>
+      <tr><td>每個 Thread 最多一張 live Ticket</td><td>一個 Thread 可承載多件獨立工作；重複由 assessment 看 Ticket 清單避免</td></tr>
+      <tr><td>「附加到 Ticket」這種 Decision</td><td>附加就是 Subscription fan-out，不需要 Eval</td></tr>
+      <tr><td>Ticket 狀態跟著 DSH Session 走</td><td>Ticket 可能被交接、恢復、由多個 Executor 執行，所以自己定義狀態</td></tr>
+      <tr><td>Policy 變更時取消執行中的 Ticket</td><td>取消會留下半成品；改為記錄並把變更送進 Ticket</td></tr>
+      <tr><td>Executor 宣稱「人叫我停」</td><td>只有 Eval 能決定 stop 的強度</td></tr>
+      <tr><td>從回報自由文字推斷「在等人」</td><td>需要結構化欄位，Executor 透過 <code>human_action</code> 問</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 7 -->
+<section id="stages">
+  <div class="sec-head"><span class="eyebrow">07 · 執行 · docs/003 · src/core/stage.ts</span><h2>Ticket 生命週期：由上往下，第一個符合的列勝出</h2></div>
+  <p>每張 open 的 Ticket 只有一個 stage，由「它在等什麼」決定。面板 Overview 就是依這張表排序：<span class="tag t-amber">person</span> 的列最先出現。調整左側條件，看 <code>ticketStage()</code> 會命中哪一列。</p>
+  <div class="sim">
+    <form id="stageForm" onsubmit="return false">
+      <div class="field"><span>Ticket 已結束？</span><div class="seg"><label><input type="radio" name="ended" value="0" checked>否</label><label><input type="radio" name="ended" value="1">是</label></div></div>
+      <div class="field"><span>Input 投遞失敗中？</span><div class="seg"><label><input type="radio" name="deliv" value="0" checked>否</label><label><input type="radio" name="deliv" value="1">是</label></div></div>
+      <div class="field"><span>有待回答的 Attention？</span><div class="seg"><label><input type="radio" name="att" value="0" checked>否</label><label><input type="radio" name="att" value="1">是</label></div></div>
+      <div class="field"><span>最新 Assignment</span><div class="seg"><label><input type="radio" name="asg" value="none">無</label><label><input type="radio" name="asg" value="pending">pending</label><label><input type="radio" name="asg" value="running" checked>running</label><label><input type="radio" name="asg" value="ended">ended</label></div></div>
+      <div class="field"><span>最新 Report</span><div class="seg"><label><input type="radio" name="rep" value="none" checked>無</label><label><input type="radio" name="rep" value="progress">progress</label><label><input type="radio" name="rep" value="waiting">waiting</label><label><input type="radio" name="rep" value="ready">ready</label><label><input type="radio" name="rep" value="blocked">blocked</label><label><input type="radio" name="rep" value="failed">failed</label></div></div>
+      <div class="field"><span>blocked/failed 之後有人留言了？</span><div class="seg"><label><input type="radio" name="hum" value="0" checked>沒有</label><label><input type="radio" name="hum" value="1">有</label></div></div>
+    </form>
+    <div class="out" style="padding:0">
+      <div class="scroll"><table class="stage-table" id="stageTable">
+        <thead><tr><th>Stage</th><th>條件</th><th>面板標籤</th></tr></thead>
+        <tbody>
+          <tr data-k="ended"><td><span class="tag t-green">ended</span></td><td>已有 <code>ended</code></td><td>已結束</td></tr>
+          <tr data-k="delivery"><td><span class="tag t-amber">person / delivery</span></td><td>投遞 Input 失敗（2s 起倍增至 1 分鐘重試）</td><td>Input undelivered</td></tr>
+          <tr data-k="answer"><td><span class="tag t-amber">person / answer</span></td><td>有 Attention</td><td>Awaiting answer</td></tr>
+          <tr data-k="review"><td><span class="tag t-amber">person / review</span></td><td>最新 Report 為 <code>ready</code></td><td>Awaiting review</td></tr>
+          <tr data-k="blocked"><td><span class="tag t-amber">person / blocked·failed</span></td><td>Report 為 blocked/failed，且之後沒有人留言</td><td>Blocked · Failed</td></tr>
+          <tr data-k="queued"><td><span class="tag t-blue">working / queued</span></td><td>沒有 Assignment，或為 pending</td><td>Queued</td></tr>
+          <tr data-k="idle"><td><span class="tag t-grey">idle</span></td><td>Report 為 waiting，或 Assignment 已結束</td><td>Waiting for a Trigger</td></tr>
+          <tr data-k="working"><td><span class="tag t-blue">working</span></td><td>其餘情況</td><td>Working</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="panel"><h3>Ticket 怎麼結束</h3>
+      <ul class="tight">
+        <li><code>ready</code> 且沒有 PR → completed</li>
+        <li><code>dropped</code>（重現不了、已被取代）→ 安靜結束</li>
+        <li>有 PR：自己開的 PR 全部 merged/closed 才結束，結果取最後一個 close</li>
+        <li>人按 Stop → Mandate 被撤回，之後什麼都收不到</li>
+      </ul>
+    </div>
+    <div class="panel"><h3>結束不等於死亡</h3>
+      <p style="font-size:14.5px">結束的 Ticket 保留 Mandate 與 Subscriptions。只要不是人叫停的，任何人在它的 Thread 上留言就會<strong>直接 resume</strong>（先用目前的 Policy revalidate Mandate），不需要重新 Eval。bot 和 CI 訊息不會喚醒它。Subscription 在結束後持續輪詢兩週。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section id="code">
+  <div class="sec-head"><span class="eyebrow">08 · 實作 · docs/007-architecture.md</span><h2>程式碼地圖</h2></div>
+  <p>測試行數幾乎等於產品程式碼，而且有一批「文件測試」：架構文件的模組表與測試表必須列出每個檔案，否則 <code>tests/docs.spec.ts</code> 會失敗。這是一個用測試把文件綁住的專案。</p>
+  <div class="bars" role="img" aria-label="各目錄行數">
+    <div class="bar-row"><span>tests/</span><div class="bar-track"><div class="bar-fill alt" style="width:100%"></div></div><span class="v">14,960</span></div>
+    <div class="bar-row"><span>src/app 組裝與膠水</span><div class="bar-track"><div class="bar-fill" style="width:35.4%"></div></div><span class="v">5,292</span></div>
+    <div class="bar-row"><span>src/client 面板</span><div class="bar-track"><div class="bar-fill" style="width:29.5%"></div></div><span class="v">4,419</span></div>
+    <div class="bar-row"><span>src/core 領域核心</span><div class="bar-track"><div class="bar-fill" style="width:14%"></div></div><span class="v">2,088</span></div>
+    <div class="bar-row"><span>src/sources</span><div class="bar-track"><div class="bar-fill" style="width:13.8%"></div></div><span class="v">2,059</span></div>
+    <div class="bar-row"><span>docs/</span><div class="bar-track"><div class="bar-fill mute" style="width:13.2%"></div></div><span class="v">1,973</span></div>
+    <div class="bar-row"><span>src/executor</span><div class="bar-track"><div class="bar-fill" style="width:5.6%"></div></div><span class="v">838</span></div>
+    <div class="bar-row"><span>src/*.ts（policy 等）</span><div class="bar-track"><div class="bar-fill" style="width:3.6%"></div></div><span class="v">544</span></div>
+    <div class="bar-row"><span>prompts/</span><div class="bar-track"><div class="bar-fill mute" style="width:2.9%"></div></div><span class="v">438</span></div>
+    <div class="bar-row"><span>src/infra</span><div class="bar-track"><div class="bar-fill" style="width:2.3%"></div></div><span class="v">347</span></div>
+  </div>
+
+  <h3>Engine 的五個內部部件（依賴只往右）</h3>
+  <div class="diagram scroll">
+    <svg viewBox="0 0 980 150" role="img" aria-label="Engine 部件依賴鏈">
+      <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink)"/></marker></defs>
+      <g>
+        <rect class="box blue" x="10" y="30" width="170" height="86" rx="3"/><text class="t" x="24" y="56">Intake</text><text class="s" x="24" y="76">收 Trigger、fan-out、</text><text class="s" x="24" y="92">排入 Eval</text><text class="m" x="24" y="108">intake.ts</text>
+        <rect class="box blue" x="210" y="30" width="170" height="86" rx="3"/><text class="t" x="224" y="56">Evals</text><text class="s" x="224" y="76">批次、gate、deadline、</text><text class="s" x="224" y="92">Decision</text><text class="m" x="224" y="108">evals.ts</text>
+        <rect class="box green" x="410" y="30" width="170" height="86" rx="3"/><text class="t" x="424" y="56">Tickets</text><text class="s" x="424" y="76">建立、resume、stop、</text><text class="s" x="424" y="92">Subscription、Input</text><text class="m" x="424" y="108">tickets.ts</text>
+        <rect class="box green" x="610" y="30" width="170" height="86" rx="3"/><text class="t" x="624" y="56">Assignments</text><text class="s" x="624" y="76">Executor 回報的事實、</text><text class="s" x="624" y="92">Report、問題</text><text class="m" x="624" y="108">assignments.ts</text>
+        <rect class="box" x="810" y="30" width="160" height="86" rx="3"/><text class="t" x="824" y="56">Replies</text><text class="s" x="824" y="76">ack/answer/result/</text><text class="s" x="824" y="92">attention 經 Outbox</text><text class="m" x="824" y="108">replies.ts</text>
+      </g>
+      <path class="ar" d="M180 73 L208 73" marker-end="url(#ah2)"/>
+      <path class="ar" d="M380 73 L408 73" marker-end="url(#ah2)"/>
+      <path class="ar" d="M780 73 L808 73" marker-end="url(#ah2)"/>
+      <path class="ar" d="M695 30 C 695 4, 495 4, 495 28" marker-end="url(#ah2)"/>
+      <text class="m" x="10" y="140">Intake→Tickets；Evals→Tickets；Tickets→Replies；Assignments→Tickets, Replies。命名慣例：指令用祈使句（stopTicket），事實用過去式（assignmentStarted）。</text>
+    </svg>
+  </div>
+
+  <div class="grid2">
+    <div class="panel"><h3>每種狀態只有一個寫入者</h3>
+      <div class="scroll"><table>
+        <tbody>
+          <tr><td>Trigger / Thread / Decision / Ticket / Assignment</td><td><code>Engine</code></td></tr>
+          <tr><td>Source 讀取位置、Thread meta</td><td>該 Source（經 <code>SourceContext</code>）</td></tr>
+          <tr><td>Settings 與歷史</td><td><code>Settings</code></td></tr>
+          <tr><td>Prompt 版本</td><td><code>Prompts</code></td></tr>
+          <tr><td>Effect rows</td><td><code>Effects</code></td></tr>
+          <tr><td>Outbox receipts</td><td><code>Outbox</code></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="panel"><h3>Import 規則</h3>
+      <ul class="tight">
+        <li><code>src/core</code> 除了 Node hashing 什麼都不 import，不做 I/O</li>
+        <li><code>src/sources</code> 不 import <code>src/app</code></li>
+        <li>面板只 import host 端的型別與少數純值模組</li>
+        <li>呼叫者只拿到自己角色的 Engine <code>Pick</code>：<code>EngineForSources</code>、<code>EngineForMainSession</code>、<code>EngineForPeople</code>、<code>EngineForSettings</code>、<code>EngineForExecutor</code></li>
+        <li>可被人或 agent 觸發的拒絕一律是 <code>UserError(code)</code>，碼表在 <code>src/core/errors.ts</code></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="reliability">
+  <div class="sec-head"><span class="eyebrow">09 · 持久 · src/app/effects.ts</span><h2>可靠性：先記下來，再去做</h2></div>
+  <p>Engine 的每個指令在一個交易內改狀態，並把外部動作 <code>enqueue</code> 成 effect；交易 commit 之後 adapter 才真的去做。所以重啟不會遺失、也不會重複。</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Effect</th><th>做什麼</th><th>同時</th><th>重試</th></tr></thead>
+    <tbody>
+      <tr><td><code>assessment</code></td><td>把候選卡片送進 Main Session，送達後才開始算 Eval deadline</td><td>4</td><td>2s 倍增至 60s</td></tr>
+      <tr><td><code>launch</code></td><td>prepare 指令 → 建 Executor Session → 送 assignment 訊息</td><td>空閒 slot 數</td><td>暫時性錯誤 5s 倍增至 300s，三次；其餘直接 fail</td></tr>
+      <tr><td><code>delivery</code></td><td>把 Ticket 的待送 Input 依序送進執行中的 Assignment</td><td>4</td><td>2s 倍增至 60s</td></tr>
+      <tr><td><code>relay</code> / <code>notice</code></td><td>Worker 回報、人的 follow-up 送進 Main Session（保序）</td><td>1</td><td>2s 倍增至 60s</td></tr>
+      <tr><td><code>reply</code></td><td>經 Source 送出 Channel 訊息，同 Ticket 同對話依序</td><td>1</td><td>5s 倍增至 300s</td></tr>
+    </tbody>
+  </table></div>
+  <div class="ladder">
+    <div><span class="k">重啟</span><span>執行中的 Assignment 以「host restarted」結束，新 Assignment 帶 recovery note：先檢查目錄、git 歷史和 GitHub，再決定要不要重做任何對外動作，最舊的 Ticket 先處理。</span></div>
+    <div><span class="k">暫停</span><span>Pause processing 停止派工、新 Eval、Input 投遞和回覆；Source 照常記錄 Trigger，Eval deadline 往後延。</span></div>
+    <div><span class="k">併發</span><span>Worker slot 上限可設（1–16），另保留 1 個額外 slot 給「人的留言」，新工作永遠擋不住人繼續推進既有 Ticket。</span></div>
+    <div><span class="k">背景</span><span>Shell 前景指令 5 秒後轉背景 job，讓 Worker 下一步就能收新訊息；回合結束後背景工作最多 30 分鐘。</span></div>
+    <div><span class="k">不刪</span><span>目前沒有任何清理：trigger、decision、outbox、settings/prompt 版本會無限增長（docs/007 Persistence 段明載）。</span></div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section id="gap">
+  <div class="sec-head"><span class="eyebrow">10 · 對照</span><h2>文章說的 vs 這份原型實際有的</h2></div>
+  <p>README 明說：公開版不等於內部版，文章中部分設計是未來方向。以下依本 repo 的程式碼與文件逐項核對。</p>
+  <div class="scroll"><table>
+    <thead><tr><th>文章中的設計</th><th>原型狀態</th><th>在哪裡</th></tr></thead>
+    <tbody>
+      <tr><td>Router–Worker 雙層架構</td><td><span class="tag t-green">已實作</span></td><td>Main Session + 每 Ticket 一個 Executor Session；<code>src/app/sessions.ts</code>、<code>src/executor/dsh.ts</code></td></tr>
+      <tr><td>事件驅動、Trigger</td><td><span class="tag t-green">已實作</span></td><td>GitHub 通知輪詢、飛書事件；<code>src/sources/</code></td></tr>
+      <tr><td>程序層 Fast Path / 語義層 Slow Path</td><td><span class="tag t-green">已實作</span></td><td>Gate <code>src/policy.ts</code>；Assessment <code>prompts/admission.md</code></td></tr>
+      <tr><td>後續訊息直達 Worker</td><td><span class="tag t-green">已實作</span></td><td>Subscription fan-out；<code>src/core/intake.ts</code></td></tr>
+      <tr><td>主動 / 提前行動</td><td><span class="tag t-amber">部分</span></td><td>需團隊寫 rule；預設 <code>observe</code> 只記錄不接單，切 <code>auto</code> 才真的動手</td></tr>
+      <tr><td>非同步背景執行</td><td><span class="tag t-amber">部分</span></td><td>Worker 背景 job / subagent（30 分鐘上限）已有；文章說「已實作但尚未預設開啟」</td></tr>
+      <tr><td>存算分離（雲端大腦 + 本機 daemon）</td><td><span class="tag t-amber">部分</span></td><td>狀態在 SQLite、可重啟恢復；但大腦與執行在同一台機器，原型中找不到遠端 daemon</td></tr>
+      <tr><td>Watchdog 外部監督者</td><td><span class="tag t-red">未見</span></td><td>全 repo 搜尋不到 watchdog；最接近的是 health board 與面板</td></tr>
+      <tr><td>鏈式召回 chained recall、長程記憶</td><td><span class="tag t-red">未見</span></td><td>文章列為開放問題</td></tr>
+      <tr><td>多 Agent 協作、安全隱私</td><td><span class="tag t-grey">開放問題</span></td><td>docs/007 Open questions：哪些 Trigger 欄位可信、部署隔離</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">評論文章的保留意見值得一起記住：雙層、事件驅動、存算分離、Watchdog 都是經典系統工程，不是新理論；百人級團隊下 Router 會不會成為瓶頸、Worker 衝突怎麼協調，都還沒有答案。另外，多 Session 設計會多花 token，這正是「用 token 換注意力」的代價。</div>
+</section>
+
+<!-- 11 -->
+<section id="handoff">
+  <div class="sec-head"><span class="eyebrow">11 · 給下一個 LLM</span><h2>Brownfield 接手指南</h2></div>
+  <p>這份 repo 對 LLM 很友善：文件是編號的、只往前引用；架構文件的模組表被測試強制與程式碼同步；模型看到的所有文字（工具、prompt、skill）都有 size budget 測試。接手時照下面的順序走，通常一輪就能進入狀況。</p>
+
+  <h3>閱讀順序（約 2,000 行文件，先讀文件再讀碼）</h3>
+  <div class="ladder">
+    <div><span class="k">1</span><span><code>docs/000-philosophy.md</code>：所有取捨的判準。改任何東西前先問「這花不花人的注意力」。</span></div>
+    <div><span class="k">2</span><span><code>docs/001-domain.md</code>：12 個概念與「被拒絕的概念」表。詞彙表在最後，中英對照。</span></div>
+    <div><span class="k">3</span><span><code>docs/002-authorization.md</code> + <code>src/policy.ts</code>：gate、admission table、Mandate revalidation。</span></div>
+    <div><span class="k">4</span><span><code>docs/003-execution.md</code> + <code>src/core/stage.ts</code>：stage 表、slot、重試、重啟。</span></div>
+    <div><span class="k">5</span><span><code>docs/007-architecture.md</code>：當作程式碼索引用，Engine 方法表、模組表、測試表、SQLite 表。</span></div>
+    <div><span class="k">6</span><span><code>src/core/engine.ts</code> → <code>intake.ts</code> → <code>evals.ts</code> → <code>tickets.ts</code>：照依賴順序讀。</span></div>
+    <div><span class="k">7</span><span>需要時再讀：<code>docs/004</code> prompts、<code>005</code> panel、<code>006</code> 部署、<code>008</code> 新增 Source 的 cookbook。</span></div>
+  </div>
+
+  <h3>不能破壞的不變式</h3>
+  <div class="grid2">
+    <div class="panel"><ul class="tight">
+      <li>Engine 是領域狀態唯一的寫入者；方法全同步，一個指令一個交易</li>
+      <li><code>src/core</code> 不做 I/O；外部動作只能 enqueue 成 effect</li>
+      <li>Mandate 只有三種改變：accept 建立、人的 stop 撤回、revalidation 失敗撤銷</li>
+      <li>Subscription 只帶上下文，不帶授權；Correlation 只加 context，不路由</li>
+    </ul></div>
+    <div class="panel"><ul class="tight">
+      <li>外部文字（留言、引用、repo 檔案）永遠是資料，不能改權限</li>
+      <li>不跨 Source 對應身分</li>
+      <li>Trigger id、Thread key、Channel 位址會持久化，改格式會斷掉舊資料</li>
+      <li><code>SCHEMA_VERSION</code> 只增不減；改儲存形狀要寫 migration</li>
+    </ul></div>
+  </div>
+
+  <h3>常見改動該碰哪些檔案</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>想做的事</th><th>程式碼</th><th>測試</th><th>文件要同步</th></tr></thead>
+    <tbody>
+      <tr><td>改授權 / gate 邏輯</td><td><code>src/policy.ts</code>、<code>src/admission.ts</code></td><td><code>tests/policy.spec.ts</code></td><td>docs/002</td></tr>
+      <tr><td>改 Ticket stage 或結束條件</td><td><code>src/core/stage.ts</code>、<code>tickets.ts</code></td><td><code>stage.spec</code>、<code>core-engine.spec</code></td><td>docs/003 stage 表</td></tr>
+      <tr><td>新增 Source（例如 Slack）</td><td><code>src/sources/&lt;kind&gt;.ts</code>、<code>tsdown.config.ts</code>、<code>cordis.patch.yml</code></td><td><code>sources.spec</code>、<code>registry.spec</code></td><td>照 docs/008 的 11 步 + checklist</td></tr>
+      <tr><td>改 agent 行為文字</td><td><code>prompts/*.md</code>（一行一句）、<code>skills/</code></td><td><code>cards.spec</code>、<code>model-surface.spec</code>（有字數預算）</td><td>docs/004</td></tr>
+      <tr><td>新增工具</td><td><code>src/app/tools/main.ts</code> 或 <code>executor.ts</code></td><td><code>tools.spec</code>、<code>model-surface.spec</code></td><td>docs/007 工具表</td></tr>
+      <tr><td>新增任何 src 或 test 檔</td><td>—</td><td><code>docs.spec</code> 會檢查</td><td><strong>必須</strong>加進 docs/007 模組表或測試表</td></tr>
+      <tr><td>新增 class</td><td>—</td><td><code>class-docs.spec</code></td><td>每個 class 前要有 JSDoc</td></tr>
+      <tr><td>面板文字</td><td><code>src/client/locales.ts</code>（中英都要）</td><td><code>locales.spec</code></td><td>docs/005</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>驗證</h3>
+  <p><code>pnpm check</code> = typecheck + vitest + tsdown build。<span id="baseline">依賴全部在 npm 上，<code>pnpm install</code> 可直接裝。本次在 commit <code>6337fc8</code> 實測：typecheck 通過，59 個 test file、1,197 個測試全過，約 25 秒。</span>Domain 規則可以用 <code>src/core/memory.ts</code> 的 in-memory repositories 單測，不需要真的 DSH host；整合測試用 <code>tests/fixtures/host.ts</code> 模擬 host。</p>
+
+  <h3>可直接貼給接手 LLM 的開場 prompt</h3>
+  <div class="copybox">
+    <button class="btn" type="button" id="copyBtn">複製</button>
+<pre id="ctxPrompt">你要接手 dsh-superagent-prototype（DeepSeek Harness 的主動型 coding agent 研究原型，TypeScript，pnpm）。
+先讀，不要改：
+1. analysis/LLM-CATCHUP.md（本 repo 的接手摘要）
+2. docs/000-philosophy.md、docs/001-domain.md（概念與「被拒絕的概念」）
+3. 與任務相關的 docs/002–004，再用 docs/007-architecture.md 當程式碼索引
+規則：
+- Engine（src/core）是 Trigger/Thread/Decision/Ticket/Assignment 唯一寫入者，全同步、無 I/O，外部動作只能 enqueue effect。
+- 不新增領域概念；新需求先試著變成既有概念的屬性或 prompt 文字。
+- Mandate 只會被 accept 建立、人的 stop 撤回、revalidation 撤銷。
+- 新增/改名 src 或 tests 檔案，要同步 docs/007 的模組表/測試表（tests/docs.spec.ts 會擋）。新 class 要有 JSDoc。
+- 改 prompts/*.md 要跑 tests/cards.spec.ts 與 tests/model-surface.spec.ts。
+- 收尾一定跑 pnpm check。
+任務：&lt;在這裡寫要做的事&gt;。先回報你會動哪些檔案、哪些文件要同步，再動手。</pre>
+  </div>
+</section>
+
+<footer>
+  <span>本頁依 commit <code>6337fc8</code>（2026-10-31）分析。原型為研究用途，非 DeepSeek 正式產品。</span>
+  <span>同目錄的 <code>analysis/LLM-CATCHUP.md</code> 是本頁的純文字版，方便 LLM 直接讀取。</span>
+</footer>
+</main>
+</div>
+
+<script>
+(function(){
+  // ---------- Journey ----------
+  const STEPS = [
+    {t:"Source 收到留言", tags:["src/sources/github.ts","github-trigger.ts"],
+     p:"GitHub Source 每輪輪詢通知，發現 Issue #42 有新留言。它先丟掉 bot 自己的訊息、和不在監聽範圍內的東西，再把這則留言翻譯成一個不可變的 Trigger，並說明它屬於哪些 Thread、回覆要寫到哪個 Channel 位址。",
+     code:`Trigger {
+  id: "gh:comment:1893…",           // 由輸入推導，重複收到也只算一次
+  source: "github",
+  actor: { id: "alice", name: "Alice" },
+  human: true,
+  addressed: "mention",            // @dsh-bot
+  threads: ["github:issue/42"],
+  text: "@dsh-bot 登入頁按鈕文字改成 Save"
+}`},
+    {t:"Intake：存一次、掛上 Thread", tags:["src/core/intake.ts","Engine.receive()"],
+     p:"Engine.receive() 在一個交易內把 Trigger 存起來（重複則回 duplicate），記到 Thread 上，並 fan-out 給訂閱這個 Thread 的 Ticket。#42 目前沒有 Ticket，所以它被排進這個 Thread 的 Eval 佇列。",
+     code:`receive(trigger) → "stored"
+thread github:issue/42
+  queued: [gh:comment:1893…]
+  subscriptions: []        // 沒人訂閱 → 走 Eval`},
+    {t:"Gate：確定性准入", tags:["src/policy.ts","gate()"],
+     p:"Passes 每 2 秒跑一次 evaluateDue()，一個 Thread 同時只跑一個 Eval，期間新進的 Trigger 併入下一批。Gate 檢查：Alice 在 allowed list 上、而且 @ 了 agent → explicit。不用呼叫模型。",
+     code:`gate(trigger, thread, tickets) → {
+  admissible: true,
+  strength: "explicit",
+  basis: { via: "addressed", source: "github",
+           sender: "alice", addressed: "mention" }
+}`},
+    {t:"候選卡片送進 Main Session", tags:["effect: assessment","src/app/links.ts"],
+     p:"Gate 通過後產生 candidate card，以 assessment effect 送進 Main Session（Router）。送達那一刻才開始算 Eval deadline；逾時兩次重新排隊，第三次記為 unavailable。",
+     code:`candidate {
+  trigger: { from: alice, text: "…改成 Save" },
+  thread: "Issue #42 登入頁問題",
+  related_tickets: [], tickets_total: 0,
+  strength: explicit
+}`},
+    {t:"Router 決定 accept", tags:["orchestrator_route","Engine.decide()"],
+     p:"Main Session 只做路由：不寫實作計畫，routing note 最多 30 字。一次 orchestrator_route 可以處理多個候選。accept 時 Engine 在同一個交易裡建立 Ticket、Mandate、第一個 Assignment、Subscription，並排入 acknowledgement。",
+     code:`orchestrator_route({ decisions: [{
+  kind: "accept", trigger_id: "gh:comment:1893…",
+  title: "登入按鈕文字改為 Save",
+  acknowledgement: "我會把登入頁按鈕文字改成 Save 並開 PR。"
+}]})`},
+    {t:"Mandate：做這件事的授權書", tags:["src/core/model.ts","Mandate"],
+     p:"Mandate 不可變，記錄 Policy 版本、範圍、強度與 basis。範圍變大就要開新 Ticket。之後 Policy 改了也不會撤銷它，只會送一個 policy-changed Input 給 Ticket；要 resume 時才 revalidate。",
+     code:`Mandate {
+  policyVersion: "a91f…",
+  strength: "explicit",
+  scope: "登入頁按鈕文字改為 Save",
+  actor: alice,
+  basis: { via: "addressed", source: "github", … },
+  rules: []               // explicit 請求不需命中 rule
+}`},
+    {t:"Executor 開工", tags:["effect: launch","src/executor/dsh.ts"],
+     p:"launch effect 取得一個 worker slot，先在執行根目錄跑 prepare 指令（典型是 git worktree，10 分鐘上限），再建立 Session worker-<ticket id>。Worker 讀到 assignment、來源 Trigger 卡片、團隊三段 prompt 與 repo 的 AGENTS.md。",
+     code:`$ sh -c "$PREPARE"        # cwd = <stateDir>/work
+DSH_SUPERAGENT_DIR=…/work/fix-login-label
+DSH_SUPERAGENT_TICKET=t_7c2…
+DSH_SUPERAGENT_GITHUB_NUMBER=42
+→ Session "worker-t_7c2…" (preset dsh-superagent-worker)`},
+    {t:"確認一次，然後安靜做事", tags:["orchestrator_ack","effect: reply"],
+     p:"Worker 在原留言下回一句確認（GitHub 訊息開頭固定加「This is by an automated agent, not a human」）。之後改碼、跑測試、開 PR，中途進度只寫在內部，不打擾人。",
+     code:`💬 Issue #42
+> This is by an automated agent, not a human.
+> 我會把登入頁按鈕文字改成 Save 並開 PR。
+
+(git switch -c fix-login-label … pnpm test … gh pr create)`},
+    {t:"Report ready → 等人 review", tags:["orchestrator_report","stage: person/review"],
+     p:"Worker 用 orchestrator_report 回報 ready 並綁定 PR（分支最後一段等於 Ticket 短名就屬於它）。Ticket 進入 person / review，面板 Overview 置頂。Worker 交棒給人時立即釋放 slot。",
+     code:`orchestrator_report({
+  state: "ready",
+  summary: "按鈕文字改為 Save，附截圖與測試結果",
+  pull: 57
+})
+ticketStage(t) → { stage: "person", action: "review" }`},
+    {t:"分支：Bob 在 PR 補一句", tags:["Subscription fan-out","不經 Eval"], branch:true,
+     p:"Bob 在 PR #57 留言「Cancel 也順便改成 Close」。PR 的 Thread 已被這張 Ticket 訂閱，所以這則訊息直接 fan-out 給 Worker，不進 Eval、不產生 Decision。Main Session 只收到一則 follow_up 通知，而且只能用它來「停止」工作。",
+     code:`receive(trigger@PR#57) →
+  fan-out → ticket t_7c2… (Input, human: true)
+  Eval: 跳過（人的訊息已到達 Ticket）
+Main Session ← follow_up notice（只能 stop）`},
+    {t:"Worker 自己決定範圍", tags:["orchestrator_trigger_handback"], branch:true,
+     p:"Worker 判斷「改 Cancel」仍在同一個 UI 文字範圍內，直接處理並推新 commit。若判斷超出 Mandate（例如「順便重構整個登入流程」），它會 hand back 一次，訊息帶著理由回到 Eval，由 Router 決定開新 Ticket 或忽略。PR merged 後 Ticket 結束，但保留訂閱，兩週內有人留言還能 resume。",
+     code:`in scope?  → 處理、push、resolve thread
+out of scope → orchestrator_trigger_handback({
+  trigger_id, reason: "需要重新設計登入流程，超出原授權"
+}) → 重新進 Eval（附上理由）`}
+  ];
+  const stepsEl=document.getElementById('steps'), stageEl=document.getElementById('stage');
+  let cur=0;
+  STEPS.forEach((s,i)=>{
+    const li=document.createElement('li'); if(s.branch) li.className='branch';
+    const b=document.createElement('button'); b.type='button'; b.setAttribute('role','tab'); b.id='st'+i;
+    b.innerHTML=`<span class="n">${s.branch?'↳':String(i+1).padStart(2,'0')}</span><span>${s.t}</span>`;
+    b.addEventListener('click',()=>show(i));
+    b.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowRight'){e.preventDefault();show(Math.min(i+1,STEPS.length-1),true)}if(e.key==='ArrowUp'||e.key==='ArrowLeft'){e.preventDefault();show(Math.max(i-1,0),true)}});
+    li.appendChild(b); stepsEl.appendChild(li);
+  });
+  function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+  function show(i,focus){
+    cur=i; const s=STEPS[i];
+    stepsEl.querySelectorAll('button').forEach((b,j)=>{b.setAttribute('aria-selected',j===i);b.tabIndex=j===i?0:-1});
+    if(focus) document.getElementById('st'+i).focus();
+    stageEl.innerHTML=`<span class="eyebrow">${s.branch?'分支':'步驟 '+(i+1)+' / 9'}</span>
+      <h3>${s.t}</h3>
+      <div class="where">${s.tags.map(t=>`<span class="tag t-blue">${esc(t)}</span>`).join('')}</div>
+      <p>${s.p}</p><pre>${esc(s.code)}</pre>
+      <div class="stage-nav"><button class="btn" type="button" id="prevB" ${i===0?'disabled':''}>← 上一步</button><button class="btn" type="button" id="nextB" ${i===STEPS.length-1?'disabled':''}>下一步 →</button></div>`;
+    document.getElementById('prevB').onclick=()=>show(Math.max(0,cur-1));
+    document.getElementById('nextB').onclick=()=>show(Math.min(STEPS.length-1,cur+1));
+  }
+  show(0);
+
+  // ---------- Concepts ----------
+  const C=[
+    ["Source","來源",1,"事件流。持有讀取位置與 bot 身分，丟掉自己的訊息，把事件翻成 Trigger。重啟不重播。"],
+    ["Trigger","觸發",0,"一個不可變事件，帶 actor 等 Source metadata。接受兩次也只產生一張 Ticket。"],
+    ["Thread","線程",1,"依時間排列的 Trigger。同一時間最多一個 Eval；可有多張 Ticket；持有 Subscriptions。"],
+    ["Channel","渠道",0,"Thread 的寫入端：確認、回答、PR、resolve review 都是寫入。"],
+    ["Policy","策略",0,"有版本的規則 + 各 Source 的 allowed list、bot list、admission table。"],
+    ["Eval","評估",1,"對一批 Trigger 的判斷：gate + assessment。無狀態，輸出一個 Decision。"],
+    ["Decision","決定",0,"accept · stop · ignore · unavailable。"],
+    ["Mandate","授權",1,"accept 給出的授權：Policy 版本、範圍、強度、命中 rule。不可變。"],
+    ["Ticket","工單",0,"一單位被授權的工作。只有 Eval 能建立。自己定義狀態，不跟 Session 走。"],
+    ["Assignment","派工",0,"Ticket 與某個 Executor 的綁定。pending → running → ended，可以有很多次。"],
+    ["Subscription","訂閱",1,"Ticket 與 Thread 的多對多關係。後續訊息直接送到 Ticket，不檢查發送者、不給新授權。"],
+    ["Correlation","關聯",0,"一個 Trigger 同屬多個 Thread 時的關係。只加 context，從不路由。"]
+  ];
+  document.getElementById('concepts').innerHTML=C.map(([n,z,core,d])=>`<div class="concept${core?' core':''}"><header><b>${n}</b><span class="zh">${z}${core?' · 核心':''}</span></header><p>${d}</p></div>`).join('');
+
+  // ---------- Gate simulator ----------
+  const gf=document.getElementById('gateForm');
+  const val=n=>{const el=gf.querySelector(`input[name="${n}"]:checked`);return el?el.value:''};
+  function gate(){
+    const who=val('who'), allowed=val('allowed')==='1', addr=val('addr'), part=val('part')==='1', obs=val('obs')==='1', mode=val('mode');
+    const cells={listedUnaddressed:document.getElementById('c1').value,unlistedAddressed:document.getElementById('c2').value,unlistedUnaddressed:document.getElementById('c3').value};
+    const tr=[]; const addressed=addr!=='none';
+    // human-only inputs disabled when not human
+    gf.querySelectorAll('input[name="allowed"],input[name="part"]').forEach(i=>i.disabled=(who!=='human'));
+    gf.querySelectorAll('input[name="addr"]').forEach(i=>i.disabled=(who==='ci'));
+    if(who==='otherbot'){tr.push('發送者是 bot，但不在 Source 的 bot list → 拒絕');return {v:'no',r:'not_human',tr}}
+    if(who==='bot'||who==='ci'){
+      const a = who==='bot' && addressed;
+      if(!(a||obs)){tr.push('非人類訊息必須 @agent，或 Source 在此範圍接收全部訊息');return {v:'no',r:'not_human',tr}}
+      if(who==='bot'){ if(mode==='off'){tr.push('名單上的 bot 最多產生 inferred，但 mode = off');return {v:'no',r:'admission_ignored',tr}}
+        tr.push('名單上的 bot → 只能是 inferred candidate，永遠不是 explicit');return {v:'inferred',basis:'bot',tr}}
+      tr.push('CI 沒有發送者，只看「不在名單、沒 @」那一格');
+      if(cells.unlistedUnaddressed!=='inferred'||mode==='off'){tr.push(`該格 = ${cells.unlistedUnaddressed}，mode = ${mode} → 不准入`);return {v:'no',r:'admission_ignored',tr}}
+      return {v:'inferred',basis:'admission',tr};
+    }
+    if(allowed&&addressed){tr.push('在 allowed list 上，而且對 agent 說話 → explicit（via addressed）');return {v:'explicit',basis:'addressed',tr}}
+    tr.push(allowed?'在名單上但沒有 @agent':'不在 allowed list 上');
+    const cell = allowed? 'listedUnaddressed' : (addressed?'unlistedAddressed':'unlistedUnaddressed');
+    const receivable = addressed || obs;
+    const adm = receivable ? cells[cell] : 'ignore';
+    tr.push(receivable?`查 admission table「${{listedUnaddressed:'名單上、沒 @',unlistedAddressed:'不在名單、有 @',unlistedUnaddressed:'不在名單、沒 @'}[cell]}」= ${adm}`:'沒 @ 且 Source 只收 @ → 不查表，視為 ignore');
+    if(adm==='explicit'){tr.push('表格這格設為 explicit → explicit（優先於 follow-up 判斷）');return {v:'explicit',basis:'admission',tr}}
+    if(part){
+      if(addr==='direct'&&!allowed){tr.push('私訊 Thread 只屬於發送者本人，別人不算 follow-up')}
+      else if(!allowed&&mode==='off'){tr.push('不在名單者的 follow-up 是 inferred，但 mode = off')}
+      else {tr.push(`Thread 已有 Ticket → follow-up，強度 ${allowed?'explicit':'inferred'}`);return {v:allowed?'explicit':'inferred',basis:'followup',tr}}
+    }
+    if(adm==='inferred'&&mode!=='off'){tr.push('表格這格為 inferred，mode ≠ off → inferred candidate');return {v:'inferred',basis:'admission',tr}}
+    const r=!allowed?'not_a_member':(receivable&&adm==='ignore'?'admission_ignored':'no_mention');
+    tr.push('都不符合 → 不准入');
+    return {v:'no',r,tr};
+  }
+  function renderGate(){
+    const g=gate(), mode=val('mode');
+    const vEl=document.getElementById('gVerdict'), nEl=document.getElementById('gNext');
+    if(g.v==='explicit'){vEl.className='verdict explicit';vEl.textContent='explicit 明確請求';
+      nEl.textContent=g.basis==='followup'?'這是既有 Ticket 的 follow-up：訊息已經 fan-out 給 Worker，由 Worker 自己判斷範圍，不進 Eval。':'送進 Main Session，Router 可直接 accept / ignore，不需要 rule。任何 accept mode 都有效。';}
+    else if(g.v==='inferred'){vEl.className='verdict inferred';vEl.textContent='inferred 推斷候選';
+      nEl.textContent= mode==='auto'?'需要完整 assessment：每條啟用 rule 判一次，命中至少一條且意圖成立才 accept。':'需要 assessment，但 mode = observe：就算判斷該做，也只記成 ignore「would accept」，不會接單。';}
+    else {vEl.className='verdict no';vEl.textContent='不准入';nEl.textContent=`記錄 disposition（reason: ${g.r}），不花任何模型 token。`;}
+    document.getElementById('gTrace').innerHTML=g.tr.map((t,i)=>`<li class="${i===g.tr.length-1?'hit':''}">${t}</li>`).join('');
+  }
+  gf.addEventListener('change',renderGate); renderGate();
+
+  // ---------- Stage classifier ----------
+  const sf=document.getElementById('stageForm');
+  const sv=n=>sf.querySelector(`input[name="${n}"]:checked`).value;
+  function stage(){
+    if(sv('ended')==='1') return 'ended';
+    if(sv('deliv')==='1') return 'delivery';
+    if(sv('att')==='1') return 'answer';
+    const asg=sv('asg'), rep= asg==='none'?'none':sv('rep');
+    if(rep==='ready') return 'review';
+    if((rep==='blocked'||rep==='failed')&&sv('hum')==='0') return 'blocked';
+    if(asg==='none'||asg==='pending') return 'queued';
+    if(rep==='waiting'||asg==='ended') return 'idle';
+    return 'working';
+  }
+  function renderStage(){
+    const k=stage();
+    document.querySelectorAll('#stageTable tbody tr').forEach(tr=>tr.classList.toggle('hit',tr.dataset.k===k));
+  }
+  sf.addEventListener('change',renderStage); renderStage();
+
+  // ---------- copy ----------
+  document.getElementById('copyBtn').addEventListener('click',e=>{
+    const txt=document.getElementById('ctxPrompt').textContent, b=e.currentTarget;
+    const done=()=>{b.textContent='已複製';setTimeout(()=>b.textContent='複製',1600)};
+    try{navigator.clipboard.writeText(txt).then(done,()=>sel())}catch(_){sel()}
+    function sel(){const r=document.createRange();r.selectNodeContents(document.getElementById('ctxPrompt'));const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='已選取，請按 Ctrl/⌘+C'}
+  });
+})();
+</script>
